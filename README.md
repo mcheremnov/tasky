@@ -1,5 +1,7 @@
 # Tasky - Command-Line Task Management Tool
 
+![Tasky Logo](./img/tasky.png)
+
 ## Description
 
 Tasky is a lightweight, secure, and hierarchical command-line task management tool written in Bash. Designed for the terminal, it stores data locally in JSON format and features a session-managed security lock alongside native subtask rendering.
