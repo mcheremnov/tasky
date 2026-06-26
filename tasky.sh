@@ -51,6 +51,23 @@ list_tasks() {
   load_tasks | jq '.[] | "\(.id): \(.task) - Done: \(.done)"'
 }
 
+complete_task() {
+  if [ -z "$1" ]; then
+    echo "Error: Please provide a task ID."
+    return 1
+  fi
+  
+  # Find the task and set done to true
+  load_tasks | jq ".[] | select(.id == $1) | .done = true" > tmp.json && mv tmp.json "$DB_FILE"
+  
+  if [ ! -s "$DB_FILE" ]; then
+    echo "Task with ID $1 not found."
+    return 1
+  fi
+  
+  echo "Task $1 marked as complete."
+}
+
 show_help() {
   echo "Usage: tasky [command] [arguments]"
   echo ""
@@ -58,6 +75,7 @@ show_help() {
   echo "  add \"Task description\" - Add a new task"
   echo "  list - List all tasks"
   echo "  help - Show this help message"
+  echo "  done <id> - Mark a task as complete"
 }
 
 case "$1" in
