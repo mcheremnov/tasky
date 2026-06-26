@@ -192,7 +192,7 @@ show_greeting() {
   echo '       ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠻⣿⣿⣿⣶⣾⣿⣿⠃'
   echo '                   ⠈⠙⠛⠛⠛⠋'
 
-  echo -e "${BLUE}${BOLD}👋 ${greeting}, ${USER}! Welcome back to Tasky.${RESET}\n"
+  echo -e "${CYAN}${BOLD}👋 ${greeting}, ${USER}! Welcome back to Tasky.${RESET}\n"
 }
 
 show_help() {
