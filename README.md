@@ -1,6 +1,8 @@
 # Tasky - Command-Line Task Management Tool
 
-<img src="./img/tasky.png" alt="Tasky Logo" width="400"/>
+<div align="center">
+  <img src="./img/tasky.png" alt="Tasky Logo" width="400"/>
+</div>
 
 ## Description
 
