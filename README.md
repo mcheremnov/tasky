@@ -44,7 +44,6 @@ Upon running `tasky` for the first time, you will be prompted to set up a master
 
 * **Add a Main Task:** ```bash
 tasky add "Fix production server"
-```
 
 ```
 
