@@ -127,7 +127,7 @@ list_tasks() {
     esac
   ) | column -t -s $'\t'
 
-=  echo "Total tasks: $count"
+  echo "Total tasks: $count"
   echo "Summary:     $pending pending, $completed completed"
 }
 
