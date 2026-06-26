@@ -68,6 +68,16 @@ complete_task() {
   echo "Task $1 marked as complete."
 }
 
+delete_task() {
+  if [ -z "$1" ]; then
+    echo "Error: Please provide a task ID."
+    return 1
+  fi
+  
+  # Placeholder for authentication and deletion logic
+  echo "Deleting task $1 requires authentication (not yet implemented)"
+}
+
 show_help() {
   echo "Usage: tasky [command] [arguments]"
   echo ""
@@ -76,6 +86,7 @@ show_help() {
   echo "  list - List all tasks"
   echo "  help - Show this help message"
   echo "  done <id> - Mark a task as complete"
+  echo "  del <id> - Delete a task (requires authentication)"
 }
 
 case "$1" in
