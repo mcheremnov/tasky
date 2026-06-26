@@ -68,7 +68,22 @@ complete_task() {
   echo "Task $1 marked as complete."
 }
 
+authenticate() {
+  read -s -p "Enter password: " PASSWORD
+  echo ""
+  if [ "$PASSWORD" = "password" ]; then # Placeholder for real authentication
+    return 0
+  else
+    return 1
+  fi
+}
+
 delete_task() {
+  if ! authenticate; then
+    echo "Authentication failed. Task not deleted."
+    return 1
+  fi
+
   if [ -z "$1" ]; then
     echo "Error: Please provide a task ID."
     return 1
