@@ -98,11 +98,11 @@ show_help() {
   echo ""
   echo "Available commands:"
   echo "  add \"Task description\" - Add a new task"
-  echo "  list - List all tasks"
-  echo "  help - Show this help message"
+  echo "  list [done|pending|all] - List tasks by status (default: all)"
   echo "  done <id> - Mark a task as complete"
   echo "  del <id> - Delete a task (requires authentication)"
-}
+  echo "  help - Show this help message"
+
 
 case "$1" in
   add) add_task "$2" ;;
