@@ -39,16 +39,30 @@ add_task() {
   echo "Task added successfully! ID: $task_id"
 }
 
+list_tasks() {
+  load_tasks | jq . > "$DB_FILE" # Refresh tasks from file
+  if [ ! -s "$DB_FILE" ]; then
+    echo "No tasks found."
+    return 0
+  fi
+  
+  # Display tasks in a formatted way (can be improved with more complex formatting)
+  echo "Tasks:"
+  load_tasks | jq '.[] | "\(.id): \(.task) - Done: \(.done)"'
+}
+
 show_help() {
   echo "Usage: tasky [command] [arguments]"
   echo ""
   echo "Available commands:"
   echo "  add \"Task description\" - Add a new task"
+  echo "  list - List all tasks"
   echo "  help - Show this help message"
 }
 
 case "$1" in
   add) add_task "$2" ;;
+  list) list_tasks ;;
   help) show_help ;;
   *) echo "Unknown command. Use 'help' to see available commands."
 esac
