@@ -6,6 +6,12 @@ DB_FILE="$DB_DIR/tasks.json"
 PASSWORD_FILE="$DB_DIR/password"
 SALT="DartMole"
 
+# --- Colors ---
+CYAN='\033[36m'
+BLUE='\033[34m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
 # --- Password Hashing ---
 encrypt() {
   echo -n "$1" | sha256sum | awk '{print $1}'
@@ -149,6 +155,42 @@ delete_task() {
   echo "Task $1 (and its subtasks if any) deleted."
 }
 
+show_greeting() {
+  local hour
+  hour=$(date +%H)
+  local greeting="Hello"
+
+  if (( hour >= 5 && hour < 12 )); then
+    greeting="Good morning"
+  elif (( hour >= 12 && hour < 17 )); then
+    greeting="Good afternoon"
+  else
+    greeting="Good evening"
+  fi
+
+  # Heavy Braille Octopus with Integrated Sign
+  
+  echo '               ┌─[ TASKY ]─┐'
+  echo '         ╭─────└─── • • ───┘'
+  echo '         │  ⢀⣀⣠⣀⣀⡀'
+  echo '         ╰⣠⣾⣿⣿⣿⣿⣿⣿⣷⣦⡀'
+  echo '       ⠀⠀⠀⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠀⠀⠀⣠⣶⣾⣷⣶⣄'
+  echo '       ⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⠀⠀⢰⣿⠟⠉⠻⣿⣿⣷'
+  echo '       ⠀⠀⠀⠈⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⢷⣄⠘⠿⠀⠀⠀⢸⣿⣿⡆'
+  echo '       ⠀⠀⠀⠀⠈⠿⣿⣿⣿⣿⣿⣀⣸⣿⣷⣤⣴⠟⠀⠀⠀⠀⢀⣼⣿⣿⠁'
+  echo '       ⠀⠀⠀⠀⠀⠀⠈⠙⣛⣿⣿⣿⣿⣿⣿⣿⣿⣦⣀⣀⣀⣴⣾⣿⣿⡟'
+  echo '       ⠀⠀⠀⢀⣠⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠋ ⣠⣤⣀'
+  echo '       ⠀⠀⣴⣿⣿⣿⠿⠟⠛⠛⢛⣿⣿⣿⣿⣿⣿⣧⡈⠉⠁⠀⠀⠀ ⠈⠉⢻⣿⣧'
+  echo '       ⠀⣼⣿⣿⠋⠀⠀⠀⠀⢠⣾⣿⣿⠟⠉⠻⣿⣿⣿⣦⣄      ⣸⣿⣿⠃'
+  echo '       ⠀⣿⣿⡇⠀⠀⠀⠀⠀⣿⣿⡿⠃   ⠈⠛⢿⣿⣿⣿⣿⣶⣿⣿⣿⡿⠋'
+  echo '       ⠀⢿⣿⣧⡀⠀⣶⣄⠘⣿⣿⡇   ⠠⠶⣿⣶⡄⠈⠙⠛⠻⠟⠛⠛⠁'
+  echo '       ⠀⠈⠻⣿⣿⣿⣿⠏⠀⢻⣿⣿⣄    ⣸⣿⡇'
+  echo '       ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠻⣿⣿⣿⣶⣾⣿⣿⠃'
+  echo '                   ⠈⠙⠛⠛⠛⠋'
+
+  echo -e "${BLUE}${BOLD}👋 ${greeting}, ${USER}! Welcome back to Tasky.${RESET}\n"
+}
+
 show_help() {
   echo "Usage: tasky [command] [arguments]"
   echo ""
@@ -172,6 +214,9 @@ case "$1" in
   list) list_tasks "$2" ;;
   done) complete_task "$2" ;;
   del) delete_task "$2" ;;
-  help|"") show_help ;;
+  help|"") 
+    show_greeting
+    show_help 
+    ;;
   *) echo "Unknown command. Use 'help' to see available commands." ;;
 esac
