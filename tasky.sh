@@ -118,23 +118,27 @@ list_tasks() {
   pending=$(jq '[.[] | select(.done == false)] | length' "$DB_FILE")
   completed=$(jq '[.[] | select(.done == true)] | length' "$DB_FILE")
 
-  (
-    echo -e "ID\tSTATUS\tTASK"    
-    jq -r '
-      [.[] | select(.parentId == null)] as $parents |
-      . as $all |
-      $parents[] | . as $p |
-      "\(.id)\t[\(if .done then "✔" else " " end)]\t\(.task)",
-      ($all[] | select(.parentId == $p.id) | "  ↳ \(.id)\t[\(if .done then "✔" else " " end)]\t\(.task)")
-    ' "$DB_FILE" | case "$1" in
-      done|completed) grep -E "\[✔\]|^ID|^----" ;;
-      pending|incomplete) grep -v -E "\[✔\]" ;;
-      *) cat ;;
-    esac
-  ) | column -t -s $'\t'
+  # Print Header
+  printf "${BOLD}${CYAN}%-4s %-8s %s${RESET}\n" "ID" "STATUS" "TASK"
 
-  echo "Total tasks: $count"
-  echo "Summary:     $pending pending, $completed completed"
+  # Print Tasks
+  jq -r --arg cyan "$CYAN" --arg blue "$BLUE" --arg reset "$RESET" '
+    [.[] | select(.parentId == null)] as $parents |
+    . as $all |
+    $parents[] | . as $p |
+    "\(.id)\t[\(if .done then $cyan + "✔" + $reset else " " end)]\t\(if .done then $cyan + .task + $reset else .task end)",
+    ($all[] | select(.parentId == $p.id) | "  ↳ \(.id)\t[\(if .done then $cyan + "✔" + $reset else " " end)]\t\(if .done then $cyan + "  " + .task + $reset else "  " + .task end)")
+  ' "$DB_FILE" | while IFS=$'\t' read -r id status task; do
+    # Use printf to force fixed-width columns
+    printf "%-4s %-8s %s\n" "$id" "$status" "$task"
+  done | case "$1" in
+    done|completed) grep -E "\[✔\]" ;;
+    pending|incomplete) grep -v -E "\[✔\]" ;;
+    *) cat ;;
+  esac
+
+  echo -e "\nTotal tasks: $count"
+  echo -e "Summary:     ${CYAN}$pending${RESET} pending, ${BLUE}$completed${RESET} completed"
 }
 
 complete_task() {
