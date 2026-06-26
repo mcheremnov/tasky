@@ -1,54 +1,105 @@
 #!/usr/bin/env bash
 
-# Constants
-DB_FILE="./tasks.json"
+# --- Constants ---
+DB_DIR="$HOME/.local/share/tasky"
+DB_FILE="$DB_DIR/tasks.json"
+PASSWORD_FILE="$DB_DIR/password"
+SALT=""
 
-# Function to load tasks from file
-load_tasks() {
-  if [ -f "$DB_FILE" ]; then
-    cat "$DB_FILE"
+# --- Password Hashing ---
+encrypt() {
+  echo -n "$1" | sha256sum | awk '{print $1}'
+}
+
+decrypt() {
+  echo -n "$1" | sha256sum | awk '{print $1}'
+}
+
+# --- Password Setup ---
+if [ ! -f "$PASSWORD_FILE" ]; then
+  read -p "Please set a password for tasky: " PASSWORD
+  if [ -z "$PASSWORD" ]; then
+    echo "Password cannot be empty. Exiting."
+    exit 1
+  fi
+  ENCRYPTED_PASSWORD=$(encrypt "$PASSWORD$SALT")
+  mkdir -p "$DB_DIR"
+  echo "$ENCRYPTED_PASSWORD" > "$PASSWORD_FILE"
+  chmod 600 "$PASSWORD_FILE"
+  echo "Password set successfully. Remember this password!"
+fi
+
+# --- Authentication ---
+authenticate() {
+  read -s -p "Enter your password: " PASSWORD
+  echo ""
+  if [ "$(decrypt "$PASSWORD$SALT")" = "$(cat "$PASSWORD_FILE")" ]; then
+    return 0
   else
-    echo "[]" >"$DB_FILE"
-    echo "Created new task database at: $DB_FILE"
+    return 1
   fi
 }
 
-# Function to save tasks to file
-save_tasks() {
-  echo "$1" >"$DB_FILE"
-}
-
-# Initial setup - create directory and empty JSON array if not exists
-mkdir -p "$(dirname "$DB_FILE")"
-if [ ! -f "$DB_FILE" ]; then
-  echo "[]" >"$DB_FILE"
+# --- Database Setup ---
+mkdir -p "$DB_DIR"
+if [ ! -f "$DB_FILE" ] || [ ! -s "$DB_FILE" ]; then
+  echo "[]" > "$DB_FILE"
 fi
 
+update_db() {
+  local tmp
+  tmp=$(mktemp)
+  jq "$1" "$DB_FILE" >"$tmp" && mv "$tmp" "$DB_FILE"
+}
+
+# --- Commands ---
 add_task() {
   if [ -z "$1" ]; then
     echo "Error: Task description cannot be empty."
     return 1
   fi
+  local id
+  # Generates a random number between 100000 and 999999
+  id=$(shuf -i 100000-999999 -n 1)
   
-  local task_id=$(date +%s)
-  local new_task='{"id":'$task_id', "task": "'$1'", "done": false}'
-  
-  # Load existing tasks, append the new one, and save
-  load_tasks | jq -s '.[] + ['"$new_task"']' | save_tasks
-  
-  echo "Task added successfully! ID: $task_id"
+  update_db ". += [{id: $id, task: \"$1\", done: false}]"
+  echo "Task added successfully! (ID: $id)"
 }
 
 list_tasks() {
-  load_tasks | jq . > "$DB_FILE" # Refresh tasks from file
-  if [ ! -s "$DB_FILE" ]; then
-    echo "No tasks found."
-    return 0
-  fi
-  
-  # Display tasks in a formatted way (can be improved with more complex formatting)
-  echo "Tasks:"
-  load_tasks | jq '.[] | "\(.id): \(.task) - Done: \(.done)"'
+  local filter_query count pending completed
+
+  # 1. Determine jq filter and calculate stats based on the argument
+  case "$1" in
+    done|completed)
+      filter_query='.[] | select(.done == true)'
+      count=$(jq '[.[] | select(.done == true)] | length' "$DB_FILE")
+      pending=$(jq '[.[] | select(.done == false)] | length' "$DB_FILE")
+      completed=$count
+      ;;
+    pending|incomplete)
+      filter_query='.[] | select(.done == false)'
+      count=$(jq '[.[] | select(.done == false)] | length' "$DB_FILE")
+      completed=$(jq '[.[] | select(.done == true)] | length' "$DB_FILE")
+      pending=$count
+      ;;
+    all|"")
+      filter_query='.[]'
+      count=$(jq 'length' "$DB_FILE")
+      pending=$(jq '[.[] | select(.done == false)] | length' "$DB_FILE")
+      completed=$(jq '[.[] | select(.done == true)] | length' "$DB_FILE")
+      ;;
+  esac
+
+  # 2. Print everything (Header + Data) into a single column command for perfect alignment
+  (
+    echo -e "ID\tSTATUS\tTASK"
+    jq -r "$filter_query | \"\(.id | tostring | .[-6:])\t[\(if .done then \"✔\" else \" \" end)]\t\(.task)\"" "$DB_FILE"
+  ) | column -t -s $'\t'
+
+  # 3. Footer / Summary
+  echo "Total tasks: $count"
+  echo "Summary:     $pending pending, $completed completed"
 }
 
 complete_task() {
@@ -56,26 +107,8 @@ complete_task() {
     echo "Error: Please provide a task ID."
     return 1
   fi
-  
-  # Find the task and set done to true
-  load_tasks | jq ".[] | select(.id == $1) | .done = true" > tmp.json && mv tmp.json "$DB_FILE"
-  
-  if [ ! -s "$DB_FILE" ]; then
-    echo "Task with ID $1 not found."
-    return 1
-  fi
-  
+  update_db "map(if .id == ($1 | tonumber) then .done = true else . end)"
   echo "Task $1 marked as complete."
-}
-
-authenticate() {
-  read -s -p "Enter password: " PASSWORD
-  echo ""
-  if [ "$PASSWORD" = "password" ]; then # Placeholder for real authentication
-    return 0
-  else
-    return 1
-  fi
 }
 
 delete_task() {
@@ -83,30 +116,31 @@ delete_task() {
     echo "Authentication failed. Task not deleted."
     return 1
   fi
-
   if [ -z "$1" ]; then
     echo "Error: Please provide a task ID."
     return 1
   fi
-  
-  # Placeholder for authentication and deletion logic
-  echo "Deleting task $1 requires authentication (not yet implemented)"
+  update_db "map(select(.id != ($1 | tonumber)))"
+  echo "Task $1 deleted."
 }
 
 show_help() {
   echo "Usage: tasky [command] [arguments]"
   echo ""
-  echo "Available commands:"
-  echo "  add \"Task description\" - Add a new task"
-  echo "  list [done|pending|all] - List tasks by status (default: all)"
-  echo "  done <id> - Mark a task as complete"
-  echo "  del <id> - Delete a task (requires authentication)"
-  echo "  help - Show this help message"
+  echo "Commands:"
+  echo "  add \"Task text\"   Add a new task"
+  echo "  list [done|pending|all] List tasks by status (default: all)"
+  echo "  done <id>          Mark a task as complete"
+  echo "  del <id>           Delete a task (requires authentication)"
+  echo "  help               Show this help message"
+}
 
-
+# --- Router ---
 case "$1" in
   add) add_task "$2" ;;
-  list) list_tasks ;;
-  help) show_help ;;
-  *) echo "Unknown command. Use 'help' to see available commands."
+  list) list_tasks "$2" ;;
+  done) complete_task "$2" ;;
+  del) delete_task "$2" ;;
+  help|"") show_help ;;
+  *) echo "Unknown command. Use 'help' to see available commands." ;;
 esac
