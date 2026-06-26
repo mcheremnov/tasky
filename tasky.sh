@@ -24,13 +24,31 @@ if [ ! -f "$DB_FILE" ]; then
   echo "[]" >"$DB_FILE"
 fi
 
+add_task() {
+  if [ -z "$1" ]; then
+    echo "Error: Task description cannot be empty."
+    return 1
+  fi
+  
+  local task_id=$(date +%s)
+  local new_task='{"id":'$task_id', "task": "'$1'", "done": false}'
+  
+  # Load existing tasks, append the new one, and save
+  load_tasks | jq -s '.[] + ['"$new_task"']' | save_tasks
+  
+  echo "Task added successfully! ID: $task_id"
+}
+
 show_help() {
   echo "Usage: tasky [command] [arguments]"
   echo ""
-  echo "Available commands will be added in future commits."
+  echo "Available commands:"
+  echo "  add \"Task description\" - Add a new task"
+  echo "  help - Show this help message"
 }
 
 case "$1" in
-help) show_help ;;
-*) echo "Unknown command. Use 'help' to see available commands." ;;
+  add) add_task "$2" ;;
+  help) show_help ;;
+  *) echo "Unknown command. Use 'help' to see available commands."
 esac
