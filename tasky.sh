@@ -17,11 +17,25 @@ decrypt() {
 
 # --- Password Setup ---
 if [ ! -f "$PASSWORD_FILE" ]; then
-  read -p "Please set a password for tasky: " PASSWORD
+  # 1. Ask for the initial password (hidden)
+  read -s -p "Please set a password for tasky: " PASSWORD
+  echo ""
+  
   if [ -z "$PASSWORD" ]; then
-    echo "Password cannot be empty. Exiting."
+    echo "Error: Password cannot be empty. Exiting."
     exit 1
   fi
+
+  # 2. Ask to confirm the password (hidden)
+  read -s -p "Confirm your password: " PASSWORD_CONFIRM
+  echo ""
+
+  if [ "$PASSWORD" != "$PASSWORD_CONFIRM" ]; then
+    echo "Error: Passwords do not match. Exiting."
+    exit 1
+  fi
+
+  # 3. Save it if they match
   ENCRYPTED_PASSWORD=$(encrypt "$PASSWORD$SALT")
   mkdir -p "$DB_DIR"
   echo "$ENCRYPTED_PASSWORD" > "$PASSWORD_FILE"
@@ -29,11 +43,35 @@ if [ ! -f "$PASSWORD_FILE" ]; then
   echo "Password set successfully. Remember this password!"
 fi
 
-# --- Authentication ---
+# --- Authentication with a 15-Minute Session ---
 authenticate() {
+  local session_file="/tmp/tasky_session_$USER"
+  local timeout=900 # 15 minutes in seconds
+
+  # Check if a valid session already exists
+  if [ -f "$session_file" ]; then
+    local last_auth
+    last_auth=$(cat "$session_file")
+    local now
+    now=$(date +%s)
+    
+    # If the session hasn't expired yet, skip password entry
+    if (( now - last_auth < timeout )); then
+      # Refresh the session timestamp so it stays open while active
+      date +%s > "$session_file"
+      return 0
+    fi
+  fi
+
+  # If no session or session expired, ask for password
   read -s -p "Enter your password: " PASSWORD
   echo ""
-  if [ "$(decrypt "$PASSWORD$SALT")" = "$(cat "$PASSWORD_FILE")" ]; then
+  
+  if [ "$(encrypt "$PASSWORD$SALT")" = "$(cat "$PASSWORD_FILE")" ]; then
+    # Create/update the session file with the current timestamp
+    mkdir -p "$(dirname "$session_file")"
+    date +%s > "$session_file"
+    chmod 600 "$session_file"
     return 0
   else
     return 1
@@ -134,6 +172,12 @@ show_help() {
   echo "  del <id>           Delete a task (requires authentication)"
   echo "  help               Show this help message"
 }
+
+# --- Global Authentication ---
+if ! authenticate; then
+  echo "Access denied. Incorrect password."
+  exit 1
+fi
 
 # --- Router ---
 case "$1" in
