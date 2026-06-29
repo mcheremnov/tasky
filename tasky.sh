@@ -161,7 +161,7 @@ delete_task() {
 
 show_greeting() {
   local hour
-  hour=$(date +%H)
+  hour=$(date +%-H)
   local greeting="Hello"
 
   if (( hour >= 5 && hour < 12 )); then
